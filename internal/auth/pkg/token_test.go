@@ -51,7 +51,12 @@ func TestComposeClaimsWithUser(t *testing.T) {
 
 func TestTokenGenerate(t *testing.T) {
 	user := testdata.UserData()
-	tk := New(ComposeClaimsWithUser(user), WithAccessTokenExpAt(time.Unix(0, 0)), WithRefreshTokenExpAt(time.Unix(0, 0)))
+	tk := New()
+	tk.AccessTokenClaims.Username = user.Username
+	tk.RefreshTokenClaims.UserID = user.ID
+	tk.SaltForRefreshTokenSecretKey = user.HashedPassword
+	tk.AccessTokenClaims.ExpiresAt = jwt.At(time.Unix(0, 0))
+	tk.RefreshTokenClaims.ExpiresAt = jwt.At(time.Unix(0, 0))
 
 	// {"username": "admin", "exp": 0}
 	wantAccessTokenString := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjowfQ.5LM5CD5guK4UZe4KwKYjeih3Yh1m_DPlTTzfF8D9r0M"
