@@ -3,14 +3,9 @@ package token
 import (
 	"time"
 
-	"github.com/dgrijalva/jwt-go/v4"
+	"github.com/dgrijalva/jwt-go"
 
 	"github.com/vachilavit/auth-system/internal/auth/model"
-)
-
-const (
-	accessTokenSecretKey  = "5fe8a32fcfdbfb27b62d91a60606c966e840a703de55fcc95ea5c2a5744d12ce"
-	refreshTokenSecretKey = "c919a17442389ee22bd51c0260c2f7cc780d37a2b45501e6c1101d91a6c158ec"
 )
 
 type AccessTokenClaims struct {
@@ -23,6 +18,10 @@ type RefreshTokenClaims struct {
 	jwt.StandardClaims
 }
 
+type AccessAndRefreshToken interface {
+	Generate() (accessTokenString, refreshTokenString string, err error)
+}
+
 type Token struct {
 	AccessTokenClaims            AccessTokenClaims
 	RefreshTokenClaims           RefreshTokenClaims
@@ -33,15 +32,20 @@ type Token struct {
 
 type Option func(*Token)
 
+const (
+	accessTokenSecretKey  = "5fe8a32fcfdbfb27b62d91a60606c966e840a703de55fcc95ea5c2a5744d12ce"
+	refreshTokenSecretKey = "c919a17442389ee22bd51c0260c2f7cc780d37a2b45501e6c1101d91a6c158ec"
+)
+
 func WithAccessTokenExpAt(expAt time.Time) Option {
 	return func(tk *Token) {
-		tk.AccessTokenClaims.ExpiresAt = jwt.At(expAt)
+		tk.AccessTokenClaims.ExpiresAt = expAt.Unix()
 	}
 }
 
 func WithRefreshTokenExpAt(expAt time.Time) Option {
 	return func(tk *Token) {
-		tk.RefreshTokenClaims.ExpiresAt = jwt.At(expAt)
+		tk.RefreshTokenClaims.ExpiresAt = expAt.Unix()
 	}
 }
 
@@ -69,10 +73,10 @@ func New(opts ...Option) *Token {
 	// default
 	tk := &Token{
 		AccessTokenClaims: AccessTokenClaims{
-			StandardClaims: jwt.StandardClaims{ExpiresAt: jwt.At(time.Now().Add(time.Minute * 5))},
+			StandardClaims: jwt.StandardClaims{ExpiresAt: (time.Now().Add(time.Minute * 5)).Unix()},
 		},
 		RefreshTokenClaims: RefreshTokenClaims{
-			StandardClaims: jwt.StandardClaims{ExpiresAt: jwt.At(time.Now().Add(time.Hour * 24 * 7))},
+			StandardClaims: jwt.StandardClaims{ExpiresAt: (time.Now().Add(time.Hour * 24 * 7)).Unix()},
 		},
 		AccessTokenSecretKey:  accessTokenSecretKey,
 		RefreshTokenSecretKey: refreshTokenSecretKey,
@@ -87,13 +91,13 @@ func New(opts ...Option) *Token {
 	return tk
 }
 
-func (t *Token) Generate() (accessTokenString, refreshTokenString string, err error) {
-	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, t.AccessTokenClaims)
-	if accessTokenString, err = accessToken.SignedString([]byte(t.AccessTokenSecretKey)); err != nil {
+func (tk *Token) Generate() (accessTokenString, refreshTokenString string, err error) {
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, tk.AccessTokenClaims)
+	if accessTokenString, err = accessToken.SignedString([]byte(tk.AccessTokenSecretKey)); err != nil {
 		return
 	}
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, t.RefreshTokenClaims)
-	if refreshTokenString, err = refreshToken.SignedString([]byte(t.RefreshTokenSecretKey + t.SaltForRefreshTokenSecretKey)); err != nil {
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, tk.RefreshTokenClaims)
+	if refreshTokenString, err = refreshToken.SignedString([]byte(tk.RefreshTokenSecretKey + tk.SaltForRefreshTokenSecretKey)); err != nil {
 		return
 	}
 

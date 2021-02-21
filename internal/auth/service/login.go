@@ -1,14 +1,16 @@
 package service
 
 import (
-	"encoding/hex"
 	"errors"
-
-	"crypto/sha256"
 
 	"github.com/vachilavit/auth-system/internal/auth/model"
 	token "github.com/vachilavit/auth-system/internal/auth/pkg"
 	pb "github.com/vachilavit/auth-system/proto/auth"
+	"golang.org/x/crypto/bcrypt"
+)
+
+var (
+	ErrInvalidUsernamOrPassword = errors.New("Invalid username or password")
 )
 
 func Login(in *pb.LoginRequest) (*pb.LoginReply, error) {
@@ -16,15 +18,16 @@ func Login(in *pb.LoginRequest) (*pb.LoginReply, error) {
 	user := model.User{
 		ID:             "e3e832db-b725-4fd5-94be-0ca4bc112e7d",
 		Username:       "admin",
-		HashedPassword: "ab0a8644e8ba7ffd7bdbde3773c66203117e41580b791be0ef7af5c96d794446",
-		Salt:           "724409f8-92e1-4e1c-b0cc-cc463da985ee",
+		HashedPassword: "$2a$12$UXkOa4CGS0nHH2FEXFYvauyjlYLSEsBJp2ZHnkzV64rJYnEkWNkAG",
 	}
 
 	tk := token.New(token.ComposeClaimsWithUser(user))
 
-	sum := sha256.Sum256([]byte(in.Password + user.Salt))
-	hashedPasswordIncoming := hex.EncodeToString(sum[:])
-	if user.Username == in.Username && user.HashedPassword == hashedPasswordIncoming {
+	errCompare := bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(in.Password))
+	if errCompare != nil {
+		return nil, errCompare
+	}
+	if user.Username == in.Username && errCompare == nil {
 		accessTokenString, refreshTokenString, err := tk.Generate()
 		if err != nil {
 			return nil, err
@@ -32,5 +35,5 @@ func Login(in *pb.LoginRequest) (*pb.LoginReply, error) {
 		return &pb.LoginReply{AccessToken: accessTokenString, RefreshToken: refreshTokenString}, nil
 	}
 
-	return nil, errors.New("Invalid username or password")
+	return nil, ErrInvalidUsernamOrPassword
 }

@@ -4,7 +4,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vachilavit/auth-system/internal/auth/testdata"
@@ -12,16 +11,16 @@ import (
 
 func TestWithAccessTokenExpAt(t *testing.T) {
 	arg := time.Now().Add(time.Minute)
-	want := jwt.At(arg)
+	want := arg
 	tk := New(WithAccessTokenExpAt(arg))
-	assert.Equal(t, want.Time, tk.AccessTokenClaims.ExpiresAt.Time, "AccessTokenClaims.ExpiresAt.Time should be equal")
+	assert.Equal(t, want.Unix(), tk.AccessTokenClaims.ExpiresAt, "AccessTokenClaims.ExpiresAt.Time should be equal")
 }
 
 func TestWithRefreshTokenExpAt(t *testing.T) {
 	arg := time.Now().Add(time.Hour)
-	want := jwt.At(arg)
+	want := arg
 	tk := New(WithRefreshTokenExpAt(arg))
-	assert.Equal(t, want.Time, tk.RefreshTokenClaims.ExpiresAt.Time, "RefreshTokenClaims.ExpiresAt.Time should be equal")
+	assert.Equal(t, want.Unix(), tk.RefreshTokenClaims.ExpiresAt, "RefreshTokenClaims.ExpiresAt.Time should be equal")
 }
 
 func TestWithAccessTokenSecretKey(t *testing.T) {
@@ -55,13 +54,13 @@ func TestTokenGenerate(t *testing.T) {
 	tk.AccessTokenClaims.Username = user.Username
 	tk.RefreshTokenClaims.UserID = user.ID
 	tk.SaltForRefreshTokenSecretKey = user.HashedPassword
-	tk.AccessTokenClaims.ExpiresAt = jwt.At(time.Unix(0, 0))
-	tk.RefreshTokenClaims.ExpiresAt = jwt.At(time.Unix(0, 0))
+	tk.AccessTokenClaims.ExpiresAt = 0
+	tk.RefreshTokenClaims.ExpiresAt = 0
 
-	// {"username": "admin", "exp": 0}
-	wantAccessTokenString := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXhwIjowfQ.5LM5CD5guK4UZe4KwKYjeih3Yh1m_DPlTTzfF8D9r0M"
-	// {"userID": "e3e832db-b725-4fd5-94be-0ca4bc112e7d", "exp": 0}
-	wantRefreshTokenString := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySUQiOiJlM2U4MzJkYi1iNzI1LTRmZDUtOTRiZS0wY2E0YmMxMTJlN2QiLCJleHAiOjB9.RcKHvdZnfAKQlvR2PZ8_BcgU1Fn7pi2divr-Jl2wAdk"
+	// {"username": "admin"}
+	wantAccessTokenString := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIn0.NlQn9Jtm8qUBqP4TitInCmwEz2JApz_QUzQbdCjm3CM"
+	// {"userID": "e3e832db-b725-4fd5-94be-0ca4bc112e7d"}
+	wantRefreshTokenString := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySUQiOiJlM2U4MzJkYi1iNzI1LTRmZDUtOTRiZS0wY2E0YmMxMTJlN2QifQ.UQDk1NXAVdD_94neSa3eHOt0yzM6Mukm2gysrPq6qIU"
 
 	accessTokenString, refreshTokenString, err := tk.Generate()
 	require.Nil(t, err, "Generate() should be nil")
